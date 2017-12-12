@@ -1,4 +1,4 @@
-# compress_hdf
+# HDFcompress
 
 What are we doing here?
 - We are archiving the data to hdf5 format.
