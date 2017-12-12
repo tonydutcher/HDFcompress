@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# script directory
+srcdir=$HOME/analysis/compress_hdf
+
+# study name and directory
+export STUDY=compress_hdf
+export STUDYDIR=$WORK/compress_hdf
+
+# add fat and bender directories to path
+export PATH=$PATH:$srcdir
+export PYTHONPATH=$PYTHONPATH:$srcdir
+export SRCDIR=$srcdir
