@@ -1,5 +1,5 @@
 
-DEFAULT_CONFIG_FILE = 'config_perc.py'
+DEFAULT_CONFIG_FILE = 'config_files/confg_perc.py'
 
 def load_config(config_file=DEFAULT_CONFIG_FILE):
     config_base = config_file.split('.')[0]

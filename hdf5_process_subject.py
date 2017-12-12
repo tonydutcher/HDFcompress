@@ -22,19 +22,23 @@ class Subject(object):
     # find the anatomy and corresponding files needed to register the anatomy to the functional based on some user input. 
     def find_anatomy(self, nb_load=True):
         if verbose: print "finding anatomy..."
-        anat  = self.hdf.create_group("anatomy")
+        files  = [ f for f in config.T1w config.T2w config.FIELDMAP ]
+        self.anat  = self.hdf.create_group("anatomy")
 
         if config.T1w is not None:
             fname = self.file_check(self.anat_dir, config.T1w)
             if verbose: print "found: ", fname
+            self.T1w = self.anat.create_group("t1w")
 
         if config.T2w is not None:
             fname = self.file_check(self.anat_dir, config.T2w)
             if verbose: print "found: ", fname
+            self.T1w = self.anat.create_group("t2w")
 
         if config.FIELDMAPS is not None:
             fname = self.file_check(self.anat_dir, config.FIELDMAPS)
             if verbose: print "found: ", fname
+            self.T1w = self.anat.create_group("fieldmap")
 
     def load_anatomy(self, fname):
 
