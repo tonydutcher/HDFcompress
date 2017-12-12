@@ -7,7 +7,7 @@ What are we doing here?
 - From this process we will also be able more easily run analyses with participants across different studies, because of the common format structure.
 
 How it works.
-Each study will get a config_[study].py file.
+- 1) Each study will get a config_[study].py file.
 - This file should be filled out to the best of the ability by the researcher or by anyone seeking to archive a particular study.
 - This file focuses on anatomy files, functional brain imaging files, and metadata about the functional brain images. 
 - These fields will allow us reconstruct some forms of analysis across subjects and across studies.
