@@ -10,5 +10,5 @@ export STUDYDIR=$WORK/HDFcompress
 
 # add script directory to search paths
 export PATH=$PATH:$srcdir
-export PYTHONPATH=$PYTHONPATH:$srcdir
+export PYTHONPATH=$PYTHONPATH:$srcdir:$srcdir/config_files
 export SRCDIR=$srcdir

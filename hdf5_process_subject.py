@@ -10,11 +10,13 @@ from config import config
 
 ## A Class object to tead in a subjects brain data and metadata into hdf5 format.
 class Subject(object):
-    def __init__(self, subject_dir, anat_dir=config.ANATDIR, func_dir=config.FUNCDIR, run_prefix=None, func_file=config.FUNCFILE_P):
+    def __init__(self, subject_dir, anat_dir=config.ANATDIR, func_dir=config.FUNCDIR, run_prefix=None, func_file=config.FUNCFILE_P, meta_dir=config.METADIR):
         self.subject_dir = subject_dir
+        self.anat_dir    = anat_dir
         self.func_dir    = os.path.join( subject_dir, func_dir )
         self.run_prefix  = run_prefix
         self.func_file   = func_file
+        self.meta_dir    = meta_dir
 
         # create a subject .hdf5 to insert things into.
         self.hdf = h5py.File('%s.hdf5'%self.subject_dir,'w')
@@ -22,14 +24,14 @@ class Subject(object):
     # find the anatomy and corresponding files needed to register the anatomy to the functional based on some user input. 
     def find_anatomy(self, nb_load=True):
         if verbose: print "finding anatomy..."
-        files  = [ f for f in config.T1w config.T2w config.FIELDMAP ]
         self.anat  = self.hdf.create_group("anatomy")
 
         if config.T1w is not None:
-            fname = self.file_check(self.anat_dir, config.T1w)
+            fname = self.file_check( self.anat_dir, config.T1w)
             if verbose: print "found: ", fname
             self.T1w = self.anat.create_group("t1w")
 
+"""
         if config.T2w is not None:
             fname = self.file_check(self.anat_dir, config.T2w)
             if verbose: print "found: ", fname
@@ -39,7 +41,7 @@ class Subject(object):
             fname = self.file_check(self.anat_dir, config.FIELDMAPS)
             if verbose: print "found: ", fname
             self.T1w = self.anat.create_group("fieldmap")
-
+"""
     def load_anatomy(self, fname):
 
     # find runs based on some user input.

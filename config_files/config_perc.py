@@ -21,14 +21,17 @@ RUNNUM     = 10
 
 # the fully processed data _P, brain_mask, _B, and raw data _R
 FUNCFILE_P = 'bold_mcf_brain.nii.gz'
-FUNCFILE_B = 'bold_mcf_brain_mask.nii.gz'
 FUNCFILE_R = 'bold.nii.gz'
 
 # movement files
 MOVFILE    = 'bold_mcf.nii.gz.par'
 
-# - METADATA ABOUT IMAGING DATA
-
+# - BEHAVIORAL METADATA ABOUT IMAGING DATA
+# these files should be as long as all funational runs combined!
+# if it is not, the files should be padded so that it is
+# ---- the goal here, is that each volume in our data has as much meta data about that volume as possible!!!
+METADIR    = 'behav/pymvpa'
+METAFILES  = ['loc_stimtype_vols.txt','rest_vols.txt','study_vols.txt','study_trial_3-5_vols.txt','study_type_3-5_vols.txt']
 
 # - RESULTS
 
