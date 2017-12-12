@@ -1,13 +1,14 @@
 #!/bin/bash
+# TACC profile for working on HDFcompress project
 
 # script directory
 srcdir=$HOME/analysis/HDFcompress
 
-# study name and directory
+# study name and directory for the data used to develop these scripts
 export STUDY=HDFcompress
 export STUDYDIR=$WORK/HDFcompress
 
-# add fat and bender directories to path
+# add script directory to search paths
 export PATH=$PATH:$srcdir
 export PYTHONPATH=$PYTHONPATH:$srcdir
 export SRCDIR=$srcdir
