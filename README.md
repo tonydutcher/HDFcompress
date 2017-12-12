@@ -4,6 +4,7 @@
 - We are archiving study data into hdf5 format. In doing this, we are taking account of idiosyncracies and unique features of study directories and standardizing them into commone format in the HDF5 data type.
 - HDF5 format will allow us to archive data with all kinds of metadata, e.g. figures, papers, etc.
 - From this process we will also be able more easily run analyses with participants across different studies, because of the common format structure.
+- File naming conventions have tried to follow as closely as possible to the [BIDS format](http://bids.neuroimaging.io/)
 
 ### How it works.
 
