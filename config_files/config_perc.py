@@ -3,7 +3,7 @@
 # --- PERC ---- #
 # - IMAGING DATA
 # path to where data is held - top level directory
-DATADIR    = '/work/04635/adutcher/lonestar/compress_hdf/perc'
+DATADIR    = '/work/04635/adutcher/lonestar/HDFcompress/perc'
 
 # path to top level anatomy directory from data dir variable
 # for file names add the proper image type suffic i.e. '.nii' or '.nii.gz'
