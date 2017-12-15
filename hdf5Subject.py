@@ -1,50 +1,74 @@
 #!/usr/bin/env python
+
+# python specific modules
 import os
 from glob import glob
-import h5py
+import logging
 import numpy as np
+
+# project specific modules
+import h5py
 import nibabel as nb
+from config import config # study specific information - common across subjects
 
-# study specific config file
-from config import config
+## Logging: good for debuging.
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+log_file = os.path.join(config.DATADIR,config.STUDY,'subject.log')
 
-## A Class object to tead in a subjects brain data and metadata into hdf5 format.
+# specifies different handlers to be applied to logging file
+formatter = logging.Formatter('%(levelname)s - %(name)s - %(funcName)s - %(message)s')
+
+# set a handler to customize logging output
+file_handler = logging.FileHandler(log_file, 'w')
+file_handler.setFormatter(formatter)
+
+# setting what get sent to log file and screen.
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+# add the handler to this instance of the logger.
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
+## Logging: good for debuging.
+
+
+## Subject object to do the work.
+# a class object to read in a subjects brain data and metadata into hdf5 format.
 class Subject(object):
-    def __init__(self, subject_dir, anat_dir=config.ANATDIR, func_dir=config.FUNCDIR, 
+    def __init__(self, study_dir, subject, anat_dir=config.ANATDIR, func_dir=config.FUNCDIR, 
         run_prefix=None, func_file=config.FUNCFILE_P, meta_dir=config.METADIR, meta_files=None, verbose=False):
 
         # initialize directory varibles for the data we would like to grab. 
-        self.subject_dir = subject_dir
-        self.anat_dir    = os.path.join( subject_dir, func_dir )
-        self.func_dir    = os.path.join( subject_dir, func_dir )
-        self.meta_dir    = os.path.join( subject_dir, meta_dir )
+        self.study_dir   = study_dir
+        self.subject_dir = os.path.join( study_dir, subject )
+        self.group_check(self.subject_dir)
+        self.anat_dir    = os.path.join( self.subject_dir, func_dir )
+        self.func_dir    = os.path.join( self.subject_dir, func_dir )
+        self.meta_dir    = os.path.join( self.subject_dir, meta_dir )
+        logger.info('Working on Study: %s, Subject: %s' % (study_dir, subject))
 
         # check to make sure specified directories exist - also need to check for read access.
-        self.group_check(self.subject_dir)
         self.group_check(self.anat_dir)
         self.group_check(self.func_dir)
         self.group_check(self.meta_dir)
 
-        # specify meta files
+        # specify files, metafiles, any directory descriptors.
         self.run_prefix  = run_prefix
         self.func_file   = func_file
         self.meta_files  = meta_files
-
-        # other non-directory variables 
-        self.verbose     = verbose
 
         # create a subject .hdf5 to insert things into.
         self.hdf = h5py.File('%s.hdf5'%self.subject_dir,'w')
 
         self.find_funcs()
         self.load_funcs()
-        self.index_full_scan_TRs()
+        self.runs_full_TR_index()
 
     # find runs based on some user input.
     def find_funcs(self, nb_load=True):
-        if self.verbose: print "finding runs..."
-        if self.verbose:
-            if nb_load: print "loading nifti objects" 
+        logger.info('Finding functional runs.')
+        logger.info('Loading as nifti objects? %s' % nb_load ) 
         
         # the run prefix we are trying to find in directory structure.
         match_this = os.path.join(self.func_dir, self.run_prefix+'*' )
@@ -55,20 +79,18 @@ class Subject(object):
         sorted_run_dirs = [ os.path.join(self.func_dir, self.run_prefix+str(i)) for i in ordering ]
         
         # query that the run directories found is the same as user specified (if user specified).
-        print "LEN RUN DIRS", len(run_dirs)
-        if len(run_dirs) == config.RUNNUM:
-            print "The number of user-specified runs and found runs does not match - check the found run directories"
-            check=1
+        test = (len(run_dirs) == config.RUNNUM)
+        logger.debug('User-specified run number and found run number is equal? %s' % test)
 
         # print output if conditions for run directories is met.
-        if check or self.verbose: print "found: ", run_dirs
+        logger.info('Found: %s' % run_dirs )
         
         # load all runs
         runs = []
         for run in sorted_run_dirs:
             # this checks to make sure the image in the run exists. 
             fname = self.file_check(run, self.func_file)
-            if self.verbose: print "including vol: %s"%fname
+            logger.info('Including vol, in order: %s' % fname)
 
             # load nifti... or not
             if nb_load:
@@ -84,7 +106,7 @@ class Subject(object):
     # load in runs, gathering information about the data.
     def load_funcs(self):
         """ Loads nifti object data into hdf5, including some metadata """
-        if self.verbose: print "loading data and preprocessing (if necessary)..."
+        logger.info("Loading volumes")
 
         # creates an hdf5 group for functional directory
         self.func = self.hdf.create_group('func')
@@ -113,35 +135,36 @@ class Subject(object):
             self.hdf['func'][run_name].attrs['run']   = i+1
             self.hdf['func'][run_name].attrs['r_ind'] = np.arange(0,dat.shape[-1])
 
-    def index_full_scan_TRs(self):
+    def runs_full_TR_index(self):
         """ Creates a full scan index as many of the files coming in have these attributes"""
-        
-        # counts the TRs across all runs.
-        count_trs = 0
+        try:
+            # counts the TRs across all runs.
+            count_trs = 0
+            # cycle through each run
+            for i,r in self.hdf['func'].iteritems():
+                if 'r_ind' not in self.hdf['func'][i].attrs:
+                    logger.exception('Run specific index not found for %s' % i)
+                # resets the tr counting vector
+                tr_vector = []
 
-        # cycle through each run
-        for i,r in self.hdf['func'].iteritems():
-            if 'r_ind' not in self.hdf['func'][i].attrs:
-                raise Exception("Run specific index not found for %s"%i)
-            # resets the tr counting vector
-            tr_vector = []
+                # cycles through the 'r_ind' attribute.
+                for j in self.hdf['func'][i].attrs['r_ind']:
+                    tr_vector.append( count_trs )
+                    count_trs+=1
 
-            # cycles through the 'r_ind' attribute.
-            for j in self.hdf['func'][i].attrs['r_ind']:
-                tr_vector.append( count_trs )
-                count_trs+=1
+                # save to hdf functional run directory
+                self.hdf['func'][i].attrs['f_ind'] = np.array( tr_vector )
 
-            # save to hdf functional run directory
-            self.hdf['func'][i].attrs['f_ind'] = np.array( tr_vector )
+            # check to make sure 'f_ind' attribute was created.
+            f_ind_attribute = [ 'f_ind' in self.hdf['func'][i].attrs for i,r in self.hdf['func'].iteritems() ]
 
-        # check to make sure 'f_ind' attribute was created.
-        f_ind_attribute = [ 'f_ind' in self.hdf['func'][i].attrs for i,r in self.hdf['func'].iteritems() ]
+            # sets and n_TRs variable for the subject.
+            self.n_TRs = ( tr_vector[-1]+1 )
 
         # check to make sure number of 'f_ind attributes = the number funcitonal runs'
-        if sum ( f_ind_attribute ) != self.n_runs:
-            raise Exception("There seems to be an error with index_full_scan_TRs() function.")
+        except sum(f_ind_attribute) != self.n_runs:
+            logger.exception("Run specific indexes not being specified.")
 
-        self.n_TRs = ( tr_vector[-1]+1 )
 
     def combine_funcs(self, to_2d=True):
         """ This function combines data across runs."""
@@ -167,13 +190,21 @@ class Subject(object):
     # find the anatomy and corresponding files needed to register the anatomy to the functional based on some user input. 
     def find_anatomy(self, nb_load=True):
         pass
-        if self.verbose: print "finding anatomy..."
+        # this needs some work.
+        try:
+            logger.info("Finding anatomy files.")
+            fnames = [ self.file_check(self.anat_dir, config.T1w), 
+                    self.file_check(self.anat_dir, config.T2w), 
+                    self.file_check(self.anat_dir, config.FIELDMAPS) ]
+            logger.info('Anatomy files found: %s' % fnames)
+
+        except fnames == None:
         self.anat  = self.hdf.create_group("anatomy")
 
         if config.T1w is not None:
             fname = self.file_check( self.anat_dir, config.T1w)
             if self.verbose: print "found: ", fname
-            self.T1w = self.anat.create_group("t1w")
+            self.T1w = self.anat.create_dataset("t1w")
 
     def load_anatomy(self, fname, nb_load=True):
         pass
@@ -186,14 +217,19 @@ class Subject(object):
 
     def group_check(self, group):
         if not os.path.exists(group):
-            raise Exception("Cannot find directory: %s, make sure full path is specified"%fname)
+            logger.critical('Cannot find directory: %s, make sure full path is specified' % fname)
         return group
 
     def file_check(self, group, file):
         fname = os.path.join( group, file )
         if not os.path.exists(fname):
-            raise Exception("Cannot find file/volume: %s"%fname)
+            logger.critical('Cannot find file or volume: %s' % fname)
         return fname
+
+## Subject object to do the work.
+
+
+
 
 
 # def load_metadata(self, metadata_file ):

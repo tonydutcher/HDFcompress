@@ -4,15 +4,14 @@ import os
 from glob import glob
 import numpy as np
 
-from hdf5_process_subject import Subject
+from hdf5Subject import Subject
 from config import config
 
 # working on a single subject.
-subject     = 'No_45' 
-subject_dir = os.path.join(config.DATADIR, subject)
-assert os.path.exists( subject_dir )
+subject   = 'No_45' 
+study_dir = os.path.join(config.DATADIR, config.STUDY)
 
-s = Subject(subject_dir, 
+s = Subject(study_dir, subject, 
     anat_dir=config.ANATDIR, 
     func_dir=config.FUNCDIR, 
     run_prefix=config.RUNPREFIX, 
