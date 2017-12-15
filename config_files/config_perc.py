@@ -32,7 +32,13 @@ MOVFILE    = 'bold_mcf.nii.gz.par'
 # if it is not, the files should be padded so that it is
 # ---- the goal here, is that each volume in our data has as much meta data about that volume as possible!!!
 METADIR    = 'behav/pymvpa'
-METAFILES  = ['loc_stimtype_vols.txt','rest_vols.txt','study_vols.txt','study_trial_3-5_vols.txt','study_type_3-5_vols.txt']
+REST       = 'rest_vols.txt'
+LOCALIZER  = 'loc_stimtype_vols.txt'
+TASK       = 'study_vols.txt'
+TEST       = ''
+
+# condition files, these get more specific about the data, need more time to process these. 
+CONDITION  = ['study_trial_3-5_vols.txt', 'study_type_3-5_vols.txt']
 
 # - RESULTS
 

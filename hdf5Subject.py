@@ -3,6 +3,7 @@
 # python specific modules
 import os
 from glob import glob
+import re
 import logging
 import numpy as np
 
@@ -56,7 +57,7 @@ class Subject(object):
         # specify files, metafiles, any directory descriptors.
         self.run_prefix  = run_prefix
         self.func_file   = func_file
-        self.meta_files  = meta_files
+        self.meta_types  = ['rest', 'loc', 'study', 'test']
 
         # create a subject .hdf5 to insert things into.
         self.hdf = h5py.File('%s.hdf5'%self.subject_dir,'w')
@@ -120,7 +121,6 @@ class Subject(object):
             aff = r.get_affine()   # get affine transformation
 
             # save it in hdf5
-            #import pdb; pdb.set_trace()
             run_name = 'run_%02d'%(int(i)+1)
             self.hdf['func'].create_group( run_name )                     # creates a group (folder) for each run
             self.hdf['func'][run_name].create_dataset( 'data', data=dat)  # saves data to that folder 
@@ -145,24 +145,24 @@ class Subject(object):
                 if 'r_ind' not in self.hdf['func'][i].attrs:
                     logger.exception('Run specific index not found for %s' % i)
                 # resets the tr counting vector
-                tr_vector = []
+                walker = []
 
                 # cycles through the 'r_ind' attribute.
                 for j in self.hdf['func'][i].attrs['r_ind']:
-                    tr_vector.append( count_trs )
+                    walker.append( count_trs )
                     count_trs+=1
 
                 # save to hdf functional run directory
-                self.hdf['func'][i].attrs['f_ind'] = np.array( tr_vector )
+                self.hdf['func'][i].attrs['f_ind'] = np.array( walker )
 
             # check to make sure 'f_ind' attribute was created.
             f_ind_attribute = [ 'f_ind' in self.hdf['func'][i].attrs for i,r in self.hdf['func'].iteritems() ]
 
             # sets and n_TRs variable for the subject.
-            self.n_TRs = ( tr_vector[-1]+1 )
+            self.n_TRs = ( walker[-1]+1 )
 
         # check to make sure number of 'f_ind attributes = the number funcitonal runs'
-        except sum(f_ind_attribute) != self.n_runs:
+        except:
             logger.exception("Run specific indexes not being specified.")
 
 
@@ -187,33 +187,91 @@ class Subject(object):
         # concatenate into a numpy array
         self.all_runs = np.concatenate( arr )
 
-    # find the anatomy and corresponding files needed to register the anatomy to the functional based on some user input. 
-    def find_anatomy(self, nb_load=True):
-        pass
-        # this needs some work.
-        try:
-            logger.info("Finding anatomy files.")
-            fnames = [ self.file_check(self.anat_dir, config.T1w), 
-                    self.file_check(self.anat_dir, config.T2w), 
-                    self.file_check(self.anat_dir, config.FIELDMAPS) ]
-            logger.info('Anatomy files found: %s' % fnames)
+    # # find the anatomy and corresponding files needed to register the anatomy to the functional based on some user input. 
+    # def find_anatomy(self, nb_load=True):
+    #     pass
+    #     # this needs some work.
+    #     try:
+    #         logger.info("Finding anatomy files.")
+    #         fnames = [ self.file_check(self.anat_dir, config.T1w), 
+    #                 self.file_check(self.anat_dir, config.T2w), 
+    #                 self.file_check(self.anat_dir, config.FIELDMAPS) ]
+    #         logger.info('Anatomy files found: %s' % fnames)
 
-        except fnames == None:
-        self.anat  = self.hdf.create_group("anatomy")
+    #     except fnames == None:
+    #     self.anat_dir  = self.hdf.create_group("anatomy")
 
-        if config.T1w is not None:
-            fname = self.file_check( self.anat_dir, config.T1w)
-            if self.verbose: print "found: ", fname
-            self.T1w = self.anat.create_dataset("t1w")
+    #     if config.T1w is not None:
+    #         fname = self.file_check( self.anat_dir, config.T1w)
+    #         if self.verbose: print "found: ", fname
+    #         self.T1w = self.anat.create_dataset("t1w")
 
     def load_anatomy(self, fname, nb_load=True):
         pass
 
-    def find_metadata():
-        pass
+    def process_metadata(self, filename):
+        """ The metadata file format is two columns [full scan index, value at index] """
+        # checks file exists 
+        file = file_check(self.meta_dir, filename)
 
-    def load_metadata():
-        pass
+        # separates file type and string name of file.
+        fileparts = os.path.basename( file ).split('.')
+        if len( fileparts ) != 2:
+            logger.critcal("Error processing file: %s, too many . in filebase"%file)
+        
+        # take file parts for processing. 
+        basefile, filetype = fileparts
+
+        # IMPORTANT, transfering the meta file description
+        logger.info("Matching %s to one of: %s meta types" % basefile, self.meta_types)
+        pattern = [ t for t in self.meta_types if re.search(t, basefile) is not None ]
+
+        # catch any potential errors. 
+        if len(pattern)>1:
+            logger.critical(
+                'Multiple patterns matched for meta files.'\
+                'Must change meta file names to match a type from list below.'\
+                '%s' %self.meta_types)
+        else:
+            logger.debug("Matched %s with %s" % (pattern[0], basefile) )
+            attr_name  = pattern[0]
+
+        # now we can load in the file.
+        if filetype == 'csv':
+            info = np.recfromcsv( file, names=['index', attr_name], delimiter=',' )
+
+        elif filetype == 'txt':
+            info = np.recfromcsv( file, names=['index', attr_name], delimiter='\t' )
+
+        else:
+            logger.exception( "%s, not .txt or .csv, chill out, we're not there yet..."%filename)
+
+        # check to make sure we don't have more than 2 columns in meta data file
+        if len(info[0])>2:
+            logger.exception('The metadata file format is [full scan index, value at index]')
+
+        # checks that the length of the info file is the same length as the number of TRs. 
+        if len( info ) != (s.n_TRs-1):
+            logger.exception( "Length of %s, does not match total # of TRs." % filename )
+
+        # cycle through each run
+        for i,r in self.hdf['func'].iteritems():
+            walker = []
+
+            # make sure run index matches
+            run = self.hdf['func'][i].attrs['run']
+
+            # cycles through each TR
+            for j in self.hdf['func'][i].attrs['f_ind']:
+                # append to vector if run index matches global index
+                if run == info[j][0]:
+                    walker.append( info[j][1] )
+                else:
+                    logger.critical("Run index and meta file do not match! AHH")
+
+            # write to hdf5
+            self.hdf['func'][i].attrs[attr_name] = np.array( walker )
+    
 
     def group_check(self, group):
         if not os.path.exists(group):
@@ -292,42 +350,7 @@ class Subject(object):
 #     self.categories = make_set(category_label, ignore=['none'])
 #     self.exposures  = make_set(exposure_label)
 
-#     self.label = label
-
-
-
-
-
-
-
-
-
-# # save properties
-# self.nframes   = self.imgs.shape[0]
-# self.nfeatures = self.imgs.shape[1]
-
-
-
-
-
-
-
-# # create a subgroup bold directory.
-# run = func.create_group("run")
-
-# self.masker = NiftiMasker(
-#     standardize=True,
-#     detrend=True,
-#     memory="nilearn_cache",
-#     memory_level=5)
-# self.masker.fit()
-
-# if run_prefix is not None:
-#     self.find_runs(run_prefix)
-#     self.load_runs()
-
-
-
+#     self.label = lab
 
 
 

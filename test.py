@@ -19,9 +19,9 @@ s = Subject(study_dir, subject,
     meta_dir=config.METADIR, 
     verbose=True)
 
-# gets to the actual data.
-s.hdf['func']['run_1']['data'][0]
-s.hdf['func']['run_1'].attrs['trs']
+
+
+
 
 def file_check( group, file):
     fname = os.path.join( group, file )
@@ -29,39 +29,53 @@ def file_check( group, file):
         raise Exception("Cannot find volume: %s"%fname)
     return fname
 
-def read_metafile(filename, skiprow=0):
+def read_metafile(filename, columns=0):
     """ Reads in contents of meta data file
     INPUT:
     filename - name of the file, assumed to be in meta directory
     skiprow  - 0 if no headers, 1 if headers in file """
+columns = []
+filename = config.REST
+skiprow = 0
+head = skiprow
 
-    # checks file exists 
-    file = file_check(s.meta_dir, filename)
+# checks file exists 
+file = file_check(s.meta_dir, filename)
 
-    # separates file type and string name of file.
-    fileparts = os.path.basename( file ).split('.')
-    if len( fileparts ) != 2:
-        raise Exception("Error processing file: %s, too many . in filebase"%file)
-    basefile  = fileparts[0]
-    filetype  = fileparts[1]
+# separates file type and string name of file.
+fileparts = os.path.basename( file ).split('.')
+if len( fileparts ) != 2:
+    raise Exception("Error processing file: %s, too many . in filebase"%file)
+basefile  = fileparts[0]
+filetype  = fileparts[1]
 
-    # now we can load in the file.
-    if filetype == 'csv':
-        info = np.recfromcsv( file, names=head, delimiter=',' )
+# now we can load in the file.
+if filetype == 'csv':
+    info = np.recfromcsv( file, names=['a', 'b'], delimiter=',' )
 
-    elif filetype == 'txt':
-        info = np.recfromcsv( file, names=head, delimiter='\t' )
+elif filetype == 'txt':
+    info = np.recfromcsv( file, names=['a', 'b'], delimiter='\t' )
 
-    else:
-        raise Exception( "%s, ends in something other than .txt or .csv - can not compute, YOU should make this happen!"%filename)
+else:
+    logger.exception( "%s, ends in something other than .txt or .csv, we're not there yet..."%filename)
 
 # checks that the length of the info file is the same length as the number of TRs. 
-if len( info ) != s.hdf['func'].attrs['trs']:
+if len( info ) != (s.n_TRs-1):
     raise Exception( "Length of %s, does not number of TRs across all functional scans."%filename )
+        if 'r_ind' not in s.hdf['func'][i].attrs:
+        logger.exception('Run specific index not found for %s' % i)
 
+# cycle through each run
+for i,r in s.hdf['func'].iteritems():
+    tr_vector = []
+    run = s.hdf['func'][i].attrs['run']
+    for j in s.hdf['func'][i].attrs['f_ind']:
+        tr_vector.append( info[j][1] )
+    s.hdf['func'][i].attrs[basefile] = np.array( tr_vector )
+ 
 
-# create attribute for trs across runs i.e. full scane trs if it does not already exist. 
-if sum ( [ 'f_ind' in s.hdf['func'][i].attrs for i,r in s.hdf['func'].iteritems() ] ) == 
+ print 'HDF5 index and meta file index disagree for %s'% file
+
 
 
     print s.hdf['func'][i].attrs['f_ind']
