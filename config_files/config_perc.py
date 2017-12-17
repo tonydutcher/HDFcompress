@@ -3,7 +3,8 @@
 # --- PERC ---- #
 # - IMAGING DATA
 # path to where data is held - top level directory
-DATADIR    = '/work/04635/adutcher/lonestar/HDFcompress'
+#DATADIR    = '/work/04635/adutcher/lonestar/HDFcompress'
+DATADIR    = '/Users/anthonydutcher/analysis/cs380/project/data'
 STUDY      = 'perc'
 
 # path to top level anatomy directory from data dir variable

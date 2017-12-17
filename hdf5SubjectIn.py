@@ -1,20 +1,15 @@
 #!/usr/bin/env python
-
-# python specific modules
-import os
+import os, re, logging
 from glob import glob
-import re
-import logging
 import numpy as np
 
 # project specific modules
 import h5py
 import nibabel as nb
-from config import config # study specific information - common across subjects
+from config import config
 
 ## Logging: good for debuging.
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 log_file = os.path.join(config.DATADIR,config.STUDY,'subject.log')
 
 # specifies different handlers to be applied to logging file
@@ -31,14 +26,14 @@ stream_handler.setFormatter(formatter)
 # add the handler to this instance of the logger.
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
-## Logging: good for debuging.
 
 
 ## Subject object to do the work.
 # a class object to read in a subjects brain data and metadata into hdf5 format.
 class Subject(object):
-    def __init__(self, study_dir, subject, anat_dir=config.ANATDIR, func_dir=config.FUNCDIR, 
-        run_prefix=None, func_file=config.FUNCFILE_P, meta_dir=config.METADIR, meta_files=None, verbose=False):
+    def __init__(self, study_dir, subject, anat_dir=None, func_dir=None, 
+        run_prefix=None, func_file=None, meta_dir=None, log_level=50):
+        logger.setLevel(log_level)
 
         # initialize directory varibles for the data we would like to grab. 
         self.study_dir   = study_dir
@@ -167,7 +162,8 @@ class Subject(object):
 
 
     def combine_funcs(self, to_2d=True):
-        """ This function combines data across runs."""
+        """ This function combines data across runs into a single data frame. 
+            - the option to move this to """
 
         # initialize empty array to become the container for all runs combined.
         arr = []
@@ -189,7 +185,8 @@ class Subject(object):
 
     # # find the anatomy and corresponding files needed to register the anatomy to the functional based on some user input. 
     # def find_anatomy(self, nb_load=True):
-    #     pass
+    #     logger.info("Matching '%s' to one of: %s meta types" %(basefile, self.meta_types))
+    #     pattern = [ t for t in self.meta_types if re.search(t, basefile) is not None ]
     #     # this needs some work.
     #     try:
     #         logger.info("Finding anatomy files.")
@@ -212,19 +209,20 @@ class Subject(object):
     def process_metadata(self, filename):
         """ The metadata file format is two columns [full scan index, value at index] """
         # checks file exists 
-        file = file_check(self.meta_dir, filename)
+        file = self.file_check(self.meta_dir, filename)
 
         # separates file type and string name of file.
         fileparts = os.path.basename( file ).split('.')
         if len( fileparts ) != 2:
-            logger.critcal("Error processing file: %s, too many . in filebase"%file)
+            logger.criticalcal("Error processing file: %s, too many . in filebase"%file)
         
         # take file parts for processing. 
         basefile, filetype = fileparts
 
         # IMPORTANT, transfering the meta file description
-        logger.info("Matching %s to one of: %s meta types" % basefile, self.meta_types)
+        logger.info("Matching '%s' to one of: %s meta types" %(basefile, self.meta_types))
         pattern = [ t for t in self.meta_types if re.search(t, basefile) is not None ]
+        logger.info("Found %s to bring into HDF5."%basefile)
 
         # catch any potential errors. 
         if len(pattern)>1:
@@ -251,7 +249,7 @@ class Subject(object):
             logger.exception('The metadata file format is [full scan index, value at index]')
 
         # checks that the length of the info file is the same length as the number of TRs. 
-        if len( info ) != (s.n_TRs-1):
+        if len( info ) != (self.n_TRs):
             logger.exception( "Length of %s, does not match total # of TRs." % filename )
 
         # cycle through each run
@@ -270,88 +268,19 @@ class Subject(object):
                     logger.critical("Run index and meta file do not match! AHH")
 
             # write to hdf5
+            logger.info("No obvious errors processing %s file into hdf5"%filename)
             self.hdf['func'][i].attrs[attr_name] = np.array( walker )
     
 
+    # helper functions to make sure files exist
     def group_check(self, group):
         if not os.path.exists(group):
             logger.critical('Cannot find directory: %s, make sure full path is specified' % fname)
         return group
-
+    # helper function to make 
     def file_check(self, group, file):
         fname = os.path.join( group, file )
         if not os.path.exists(fname):
             logger.critical('Cannot find file or volume: %s' % fname)
         return fname
-
-## Subject object to do the work.
-
-
-
-
-
-# def load_metadata(self, metadata_file ):
-#     print "loading metadata..."
-
-#     # load file containing metadata
-#     if not os.path.exists( metadata_file ):
-#         raise Exception( "Cannot find file: %s"%metadata_file )
-    
-#     # for processing different kinds of files
-#     if metadata_file.endswith('.csv'):
-#         info = np.recfromcsv( metadata_file, delimiter=',')
-
-#     elif metadata_file.endswith('.txt'):
-#         info = np.recfromcsv( metadata_file, delimiter='\t')
-
-#     # dictionary for all volume-based labels
-#     label = {}
-
-#     # align labels with volume shape
-#     for i,row in enumerate(info):
-#         ind = int(round(row[onset_col]))
-
-#         # if timepoint is outside of the current scope, skip.
-#         if ind > self.nframes -1: continue
-
-#         # save all columns
-#         for col in self.info.dtype.names:
-#             # initialize if col doesn't exist
-#             if col not in label:
-#                 label[col]  = [np.nan for _ in range(self.nframes)]
-#             # fill in timepoint with label value
-#             label[col][ind] = row[col]
-
-#     # data type correction
-#     for key,val in label.iteritems():
-#         label[key] = np.array(val)
-
-#     for column in [item_label, category_label]:
-#         try:
-#             # change object id to str (after casting to int)
-#             is_nan = np.isnan(label[column])
-#             label[column] = label[column].astype(np.int).astype(np.str)
-#         except:
-#             # change object id to str
-#             label[column] = label[column].astype(np.str)
-#             is_nan = (label[column] == '') | (label[column] == 'nan')
-
-#         # create none category
-#         label[column][is_nan] = 'none'
-
-#     def make_set(key, ignore=[]):
-#         if label[key].dtype == np.number:
-#             items = np.unique( label[key][~np.isnan(label[key])] )
-#         else:
-#             items = np.unique( label[key] )
-#         return set([x for x in items if x not in ignore])
-
-#     self.object_ids = make_set(item_label, ignore=['none'])
-#     self.categories = make_set(category_label, ignore=['none'])
-#     self.exposures  = make_set(exposure_label)
-
-#     self.label = lab
-
-
-
 
