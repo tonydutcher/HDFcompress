@@ -18,9 +18,9 @@
 - The program will process the study according to the config file argument inputs. Errors should point in the direction of what needs to be debugged. 
 - The program is focused around a single subject. 
 The main worker for the program is HDFcompress.py, an example input is below 
-'''
+```
 HDFcompress.py -config 'config_[study].py' -sid 'No_32' -type 'process'
-'''
+```
 This will work on the 'perc' study, for subject 'No_32', and bring that subject into hdf5 format.
 
 ### Features of the code.
