@@ -4,20 +4,21 @@ import os
 from glob import glob
 import numpy as np
 
-from hdf5Subject import Subject
-from config import config
+from hdf5SubjectIn import processSubject
+
+# check for the existence of the config file. 
+def load_config(config_file='config_perc.py'):
+    config_path = '/home1/04635/adutcher/analysis/HDFcompress/config_files'
+    assert os.path.exists( os.path.join( config_path, config_file ) )
+    config_base = config_file.split('.')[0]
+    return __import__(config_base)
+
+# load in config file. 
+config = load_config()
 
 # working on a single subject.
 subject   = 'No_45' 
-study_dir = os.path.join(config.DATADIR, config.STUDY)
 
-s = Subject(study_dir, subject, 
-    anat_dir=config.ANATDIR, 
-    func_dir=config.FUNCDIR, 
-    run_prefix=config.RUNPREFIX, 
-    func_file=config.FUNCFILE_P, 
-    meta_dir=config.METADIR )
+s = processSubject(config, subject)
 
-s.process_metadata(config.REST)
-s.process_metadata(config.LOCALIZER)
-s.process_metadata(config.TASK)
+HDFcompress.py -config 'config_perc.py' -sid 'No_45' -type 'process'

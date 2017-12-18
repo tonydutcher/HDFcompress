@@ -8,6 +8,17 @@ import h5py
 import nibabel as nb
 from config import config
 
+def check_hdf5(group, file):
+    fname = os.path.join( group, file )
+    if not os.path.exists(fname):
+        logger.critical('Cannot find file or volume: %s' % fname)
+    return fname
+
+study   = os.path.basename(config.STUDYDIR)
+outhdf5      = '%s_%s'%(study, sid)
+outfile = '%s.hdf5'%outhdf5
+
+
 ## Logging: good for debuging.
 logger = logging.getLogger(__name__)
 log_file = os.path.join(config.DATADIR,config.STUDY,'subject.log')

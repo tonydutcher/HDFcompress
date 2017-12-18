@@ -6,43 +6,50 @@ import numpy as np
 # project specific modules
 import h5py
 import nibabel as nb
-from config import config
 
 ## Logging: good for debuging.
 logger = logging.getLogger(__name__)
-log_file = os.path.join(config.DATADIR,config.STUDY,'subject.log')
-
-# specifies different handlers to be applied to logging file
-formatter = logging.Formatter('%(levelname)s - %(name)s - %(funcName)s - %(message)s')
-
-# set a handler to customize logging output
-file_handler = logging.FileHandler(log_file, 'w')
-file_handler.setFormatter(formatter)
-
-# setting what get sent to log file and screen.
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
-
-# add the handler to this instance of the logger.
-logger.addHandler(file_handler)
-logger.addHandler(stream_handler)
-
 
 ## Subject object to do the work.
 # a class object to read in a subjects brain data and metadata into hdf5 format.
-class Subject(object):
-    def __init__(self, study_dir, subject, anat_dir=None, func_dir=None, 
-        run_prefix=None, func_file=None, meta_dir=None, log_level=50):
-        logger.setLevel(log_level)
+class processSubject(object):
+    def __init__(self, config, subject, log_level=10):
+        self.config = config
+        
+        # makes sure the study and subject idrectories exist and sets up logging
+        self.study_dir   = config.STUDYDIR
+        self.subject_dir = os.path.join( self.study_dir, subject )
+        self.group_check( self.subject_dir )
+        study_name   = os.path.basename(self.study_dir)
 
-        # initialize directory varibles for the data we would like to grab. 
-        self.study_dir   = study_dir
-        self.subject_dir = os.path.join( study_dir, subject )
-        self.group_check(self.subject_dir)
-        self.anat_dir    = os.path.join( self.subject_dir, func_dir )
-        self.func_dir    = os.path.join( self.subject_dir, func_dir )
-        self.meta_dir    = os.path.join( self.subject_dir, meta_dir )
-        logger.info('Working on Study: %s, Subject: %s' % (study_dir, subject))
+        # check output directory
+        self.out_dir     = config.OUTDIR
+        self.group_check(self.out_dir)
+
+        # logging stuff
+        log_file   = os.path.join( self.out_dir, '%s_%s.log'%(study_name, subject) )
+        logger.setLevel( log_level )
+
+        # specifies different handlers to be applied to logging file
+        formatter = logging.Formatter('%(levelname)s - %(name)s - %(funcName)s - %(message)s')
+
+        # set a handler to customize logging output
+        file_handler = logging.FileHandler(log_file, 'w')
+        file_handler.setFormatter(formatter)
+
+        # setting what get sent to log file and screen.
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+
+        # add the handler to this instance of the logger.
+        logger.addHandler(file_handler)
+        logger.addHandler(stream_handler)
+
+        # set-up the rest of the directories. 
+        self.anat_dir    = os.path.join( self.subject_dir, config.ANATDIR )
+        self.func_dir    = os.path.join( self.subject_dir, config.FUNCDIR )
+        self.meta_dir    = os.path.join( self.subject_dir, config.METADIR )
+        logger.info('Working on Study: %s, Subject: %s' % (self.study_dir, subject))
 
         # check to make sure specified directories exist - also need to check for read access.
         self.group_check(self.anat_dir)
@@ -50,16 +57,28 @@ class Subject(object):
         self.group_check(self.meta_dir)
 
         # specify files, metafiles, any directory descriptors.
-        self.run_prefix  = run_prefix
-        self.func_file   = func_file
+        self.run_prefix  = config.RUNPREFIX
+        self.func_file   = config.FUNCFILE_P
         self.meta_types  = ['rest', 'loc', 'study', 'test']
 
         # create a subject .hdf5 to insert things into.
-        self.hdf = h5py.File('%s.hdf5'%self.subject_dir,'w')
+        outhdf5      = os.path.join(self.out_dir, '%s_%s'%(study_name, subject))
+        self.outfile = '%s.hdf5'%outhdf5
+
+        # create file if one does not already exist.
+        if not os.path.exists(self.outfile):
+            self.hdf = h5py.File(self.outfile,'w')
+            logger.info("HDF5 file does not exist creating, %s"%self.outfile)
+        else:
+            self.hdf = h5py.File(self.outfile,'r+')
+            logger.info("HDF5 file %s, already exists"%self.outfile)
 
         self.find_funcs()
         self.load_funcs()
         self.runs_full_TR_index()
+        self.process_metadata(config.REST)
+        self.process_metadata(config.LOCALIZER)
+        self.process_metadata(config.TASK)
 
     # find runs based on some user input.
     def find_funcs(self, nb_load=True):
@@ -73,10 +92,6 @@ class Subject(object):
         # sorted lists have a subtly different way of ordering strings. 
         ordering   = sorted( [ int(os.path.basename(r).split('_')[-1]) for r in run_dirs ] )
         sorted_run_dirs = [ os.path.join(self.func_dir, self.run_prefix+str(i)) for i in ordering ]
-        
-        # query that the run directories found is the same as user specified (if user specified).
-        test = (len(run_dirs) == config.RUNNUM)
-        logger.debug('User-specified run number and found run number is equal? %s' % test)
 
         # print output if conditions for run directories is met.
         logger.info('Found: %s' % run_dirs )
@@ -176,7 +191,7 @@ class Subject(object):
             data = self.hdf['func'][i]['data'][:]
             if to_rd:
                 n_voxels = np.prod(data.shape[:-1])
-                data     = data.reshape( n_voxels, data.shape[-1])
+                data     = data.reshape(n_voxels, data.shape[-1])
             # add run data to a list
             arr.append( data )
 
@@ -214,7 +229,7 @@ class Subject(object):
         # separates file type and string name of file.
         fileparts = os.path.basename( file ).split('.')
         if len( fileparts ) != 2:
-            logger.criticalcal("Error processing file: %s, too many . in filebase"%file)
+            logger.error("Error processing file: %s, too many . in filebase"%file)
         
         # take file parts for processing. 
         basefile, filetype = fileparts
@@ -226,7 +241,7 @@ class Subject(object):
 
         # catch any potential errors. 
         if len(pattern)>1:
-            logger.critical(
+            logger.error(
                 'Multiple patterns matched for meta files.'\
                 'Must change meta file names to match a type from list below.'\
                 '%s' %self.meta_types)
@@ -250,7 +265,7 @@ class Subject(object):
 
         # checks that the length of the info file is the same length as the number of TRs. 
         if len( info ) != (self.n_TRs):
-            logger.exception( "Length of %s, does not match total # of TRs." % filename )
+            logger.exception( "Length of %s, does not match total # of TRs."%filename )
 
         # cycle through each run
         for i,r in self.hdf['func'].iteritems():
@@ -265,7 +280,7 @@ class Subject(object):
                 if run == info[j][0]:
                     walker.append( info[j][1] )
                 else:
-                    logger.critical("Run index and meta file do not match! AHH")
+                    logger.error("Run index and meta file do not match! AHH")
 
             # write to hdf5
             logger.info("No obvious errors processing %s file into hdf5"%filename)
@@ -275,12 +290,12 @@ class Subject(object):
     # helper functions to make sure files exist
     def group_check(self, group):
         if not os.path.exists(group):
-            logger.critical('Cannot find directory: %s, make sure full path is specified' % fname)
+            logger.error('Cannot find directory: %s, make sure full path is specified'%group)
         return group
+
     # helper function to make 
     def file_check(self, group, file):
         fname = os.path.join( group, file )
         if not os.path.exists(fname):
-            logger.critical('Cannot find file or volume: %s' % fname)
+            logger.error('Cannot find file or volume: %s'%fname)
         return fname
-
