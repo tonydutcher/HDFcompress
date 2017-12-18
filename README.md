@@ -6,11 +6,19 @@
 - From this process we will also be able more easily run analyses with participants across different studies, because of the common format structure.
 - File naming conventions have tried to follow as closely as possible to the [BIDS format](http://bids.neuroimaging.io/)
 
+#### Current form of the project
+- For now, the program functions on one subject at a time.
+- Also, the program only takes in functional brain imaging files and metadata about the functional brain images. These are the two main aspects of results and statistical analysis for a given study.
+- Eventually, we will build up to including all data for an entire study, this will be addressed in the future.
+
 ### How it works.
 
 #### Putting data into HDF5 format.
-- Each study will get a config_[study].py file. This file should be filled out to the best of the ability by the researcher or by anyone seeking to archive a particular study.
-- This file focuses on anatomy files, functional brain imaging files, and metadata about the functional brain images. These fields will allow us reconstruct some forms of analysis across subjects and across studies. Therefore, at the current moment in time, not all data is being systematically brought into the hdf5 format structure.
+- Each study will get a config_[study].py file. This file should be filled out to the best of the ability by the researcher or by anyone seeking to convert a particular study. This file must be in the config_files folder before running anything.
 - The program will process the study according to the config file argument inputs. Errors should point in the direction of what needs to be debugged. 
-
-#### Getting subjects from HDF5 format.
+- The program is focused around a single subject. 
+The main worker for the program is HDFcompress.py, an example input is below 
+'''
+HDFcompress.py -config 'config_[study].py' -sid 'No_32' -type 'process'
+'''
+This will work on the 'perc' study, for subject 'No_32', and bring that subject into hdf5 format.
