@@ -32,7 +32,7 @@ This will work on the 'perc' study, for subject 'No_32', and '-type' tells the p
 - The code is modular and well commented. This makes what is happening transparent and hopefully easier for others to interpret and contribute their own code if desired. 
 
 ### A short walk through.
-#### To view data in HDF5 format, follow these steps
+To view data in HDF5 format, follow these steps, each of the lines in the code snippets is a command to input once in an interactive session.
 1. Open an interactive session in python.
 2. load h5py, a python wrapper for hdf5 formatted data.
 ```
