@@ -13,7 +13,7 @@
 
 ### How it works.
 
-#### Putting data into HDF5 format.
+#### Putting data into HDF5 format
 - Each study will get a config_[study].py file. This file should be filled out to the best of the ability by the researcher or by anyone seeking to convert a particular study. This file must be in the config_files folder before running anything.
 - The program will process the study according to the config file argument inputs. Errors should point in the direction of what needs to be debugged. 
 - The program is focused around a single subject. 
