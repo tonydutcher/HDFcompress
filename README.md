@@ -31,9 +31,8 @@ This will work on the 'perc' study, for subject 'No_32', and '-type' tells the p
 - Internally, the code runs a number of verifications, to make sure data put into HDF5 format is consistent with it's original format and type.
 - The code is modular and well commented. This makes what is happening transparent and hopefully easier for others to interpret and contribute their own code if desired. 
 
-### Short walk through
-#### Viewing data in HDF5 format in python
-- To view data in HDF5 format, follow these steps.
+### A short walk through.
+#### To view data in HDF5 format, follow these steps
 1. Open an interactive session in python.
 2. load h5py, a python wrapper for hdf5 formatted data.
 ```
