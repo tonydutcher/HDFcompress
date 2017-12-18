@@ -22,3 +22,9 @@ The main worker for the program is HDFcompress.py, an example input is below
 HDFcompress.py -config 'config_[study].py' -sid 'No_32' -type 'process'
 '''
 This will work on the 'perc' study, for subject 'No_32', and bring that subject into hdf5 format.
+
+### Features of the code.
+- The main function uses an argument parser to easily and meaningfully parse input arguments. 
+- The code uses python's logging module, which allows us to specify multiple logging levels depending on user preference. 
+- Internally, the code runs a number of verifications, to make sure data put into HDF5 format is consistent with it's original format and type.
+- The code is very modular.
